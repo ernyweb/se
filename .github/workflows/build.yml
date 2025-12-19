@@ -11,6 +11,11 @@ jobs:
     - name: Build android-armv7a
       run: |
         scripts/build-android-armv7a.sh
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-armv7a-build
+        path: build/out/
 
   build-windows-i386:
     runs-on: windows-2019
@@ -22,3 +27,8 @@ jobs:
         git submodule init && git submodule update
         ./waf.bat configure -T debug --32bits
         ./waf.bat build
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-i386-build
+        path: build/out/
