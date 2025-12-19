@@ -32,6 +32,9 @@ class CPlayerEntity
 {
 public:
 	CCameraProperty *m_pCameraProperty;
+	Vector m_vecPosition;
+	QAngle m_angAngles; // Model angles
+	QAngle m_angCameraAngles; // Camera angles
 };
 
 class CEntity
@@ -95,6 +98,9 @@ extern ConVar cl_esp;
 extern ConVar cl_esp_box;
 extern ConVar cl_esp_line;
 extern ConVar cl_esp_name;
+extern ConVar cl_thirdperson;
+extern ConVar cl_spinbot;
+extern ConVar cl_spinbot_speed;
 
 #endif // WORLDMANAGER_H
 

@@ -111,6 +111,30 @@ void CRenderManager::UpdateLocalPlayerCamera()
 	CCameraProperty *pCamera = g_pWorldManager->GetLocalPlayer()->m_pCameraProperty;
 	VectorMA( pCamera->m_Origin, dt, pCamera->m_Velocity, pCamera->m_Origin );
 	VectorMA( pCamera->m_Angles, dt, pCamera->m_AngVelocity, pCamera->m_Angles );
+
+	// Spinbot - only rotate model angles, not camera
+	CPlayerEntity *pPlayer = g_pWorldManager->GetLocalPlayer();
+	if ( cl_spinbot.GetBool() )
+	{
+		pPlayer->m_angAngles.y += cl_spinbot_speed.GetFloat() * dt;
+		if ( pPlayer->m_angAngles.y > 180.0f )
+			pPlayer->m_angAngles.y -= 360.0f;
+	}
+
+	// Update camera position based on third person
+	if ( cl_thirdperson.GetBool() )
+	{
+		// Third person: camera behind player (use model angles for direction)
+		Vector forward;
+		AngleVectors( pPlayer->m_angAngles, &forward );
+		pCamera->m_Origin = pPlayer->m_vecPosition - forward * 100.0f + Vector(0,0,50);
+	}
+	else
+	{
+		// First person: camera at player position
+		pCamera->m_Origin = pPlayer->m_vecPosition;
+	}
+	pCamera->m_Angles = pPlayer->m_angCameraAngles;
 }
 
 

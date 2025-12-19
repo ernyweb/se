@@ -27,6 +27,9 @@ ConVar cl_esp( "cl_esp", "0", FCVAR_CHEAT, "Enable ESP" );
 ConVar cl_esp_box( "cl_esp_box", "1", FCVAR_CHEAT, "Draw ESP boxes" );
 ConVar cl_esp_line( "cl_esp_line", "1", FCVAR_CHEAT, "Draw ESP lines" );
 ConVar cl_esp_name( "cl_esp_name", "1", FCVAR_CHEAT, "Draw ESP names" );
+ConVar cl_thirdperson( "cl_thirdperson", "0", FCVAR_CHEAT, "Enable third person view" );
+ConVar cl_spinbot( "cl_spinbot", "0", FCVAR_CHEAT, "Enable spinbot" );
+ConVar cl_spinbot_speed( "cl_spinbot_speed", "100", FCVAR_CHEAT, "Spinbot speed" );
 
 
 //-----------------------------------------------------------------------------
@@ -83,6 +86,9 @@ LevelRetVal_t CWorldManager::LevelShutdown( bool bFirstCall )
 void CWorldManager::CreateEntities()
 {
 	m_PlayerEntity.m_pCameraProperty = g_pRenderManager->CreateCameraProperty();
+	m_PlayerEntity.m_vecPosition.Init();
+	m_PlayerEntity.m_angAngles.Init();
+	m_PlayerEntity.m_angCameraAngles.Init();
 
 	// Create some test entities for ESP
 	CEntity ent1;
@@ -129,11 +135,24 @@ void CWorldManager::SetInitialLocalPlayerPosition()
 	Vector vecCameraDirection( 1.0f, 1.0f, -0.5f );
 	VectorNormalize( vecCameraDirection );
 
-	VectorMA( Vector( 512, 512, 0 ), -flDistance, vecCameraDirection, m_PlayerEntity.m_pCameraProperty->m_Origin );
+	m_PlayerEntity.m_vecPosition = Vector( 512, 512, 0 );
+	m_PlayerEntity.m_angAngles = QAngle( vecCameraDirection );
+	m_PlayerEntity.m_angCameraAngles = m_PlayerEntity.m_angAngles;
 
-	QAngle angles;
-	VectorAngles( vecCameraDirection, m_PlayerEntity.m_pCameraProperty->m_Angles );
+	if ( cl_thirdperson.GetBool() )
+	{
+		// Third person: camera behind player
+		Vector forward;
+		AngleVectors( m_PlayerEntity.m_angAngles, &forward );
+		m_PlayerEntity.m_pCameraProperty->m_Origin = m_PlayerEntity.m_vecPosition - forward * 100.0f + Vector(0,0,50);
+	}
+	else
+	{
+		// First person: camera at player position
+		m_PlayerEntity.m_pCameraProperty->m_Origin = m_PlayerEntity.m_vecPosition;
+	}
 
+	m_PlayerEntity.m_pCameraProperty->m_Angles = m_PlayerEntity.m_angCameraAngles;
 }
 
 
@@ -157,6 +176,9 @@ void CWorldManager::ForwardStart( const CCommand &args )
 	pCamera->GetForward( &vecForward );
 	
 	VectorMA( pCamera->m_Velocity, cam_forwardspeed.GetFloat(), vecForward, pCamera->m_Velocity );
+
+	// Update player position
+	VectorMA( m_PlayerEntity.m_vecPosition, cam_forwardspeed.GetFloat() * 0.01f, vecForward, m_PlayerEntity.m_vecPosition );
 }
 
 void CWorldManager::ForwardStop( const CCommand &args )
@@ -167,6 +189,9 @@ void CWorldManager::ForwardStop( const CCommand &args )
 	pCamera->GetForward( &vecForward );
 
 	VectorMA( pCamera->m_Velocity, -cam_forwardspeed.GetFloat(), vecForward, pCamera->m_Velocity );
+
+	// Update player position
+	VectorMA( m_PlayerEntity.m_vecPosition, -cam_forwardspeed.GetFloat() * 0.01f, vecForward, m_PlayerEntity.m_vecPosition );
 }
 
 void CWorldManager::BackwardStart( const CCommand &args )
@@ -177,6 +202,9 @@ void CWorldManager::BackwardStart( const CCommand &args )
 	pCamera->GetForward( &vecForward );
 
 	VectorMA( pCamera->m_Velocity, -cam_backwardspeed.GetFloat(), vecForward, pCamera->m_Velocity );
+
+	// Update player position
+	VectorMA( m_PlayerEntity.m_vecPosition, -cam_backwardspeed.GetFloat() * 0.01f, vecForward, m_PlayerEntity.m_vecPosition );
 }
 
 void CWorldManager::BackwardStop( const CCommand &args )
@@ -187,4 +215,7 @@ void CWorldManager::BackwardStop( const CCommand &args )
 	pCamera->GetForward( &vecForward );
 
 	VectorMA( pCamera->m_Velocity, cam_backwardspeed.GetFloat(), vecForward, pCamera->m_Velocity );
+
+	// Update player position
+	VectorMA( m_PlayerEntity.m_vecPosition, cam_backwardspeed.GetFloat() * 0.01f, vecForward, m_PlayerEntity.m_vecPosition );
 }
