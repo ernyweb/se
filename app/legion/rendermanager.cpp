@@ -12,6 +12,7 @@
 #include "worldmanager.h"
 #include "materialsystem/imaterialsystem.h"
 #include "tier2/tier2.h"
+#include "tier2/meshutils.h"
 
 
 //-----------------------------------------------------------------------------
@@ -136,6 +137,7 @@ void CRenderManager::Update( )
 	pRenderContext->ClearColor4ub( 0, 0, 0, 255 ); 
 	pRenderContext->ClearBuffers( true, true );
 	RenderWorld();
+	g_pWorldManager->DrawESP();
 	g_pUIManager->DrawUI();
 	g_pMaterialSystem->EndFrame();
 	g_pMaterialSystem->SwapBuffers();
@@ -244,6 +246,8 @@ void CRenderManager::RenderWorld()
 
 	g_pWorldManager->DrawWorld();
 
+	DrawESP();
+
 	pRenderContext->MatrixMode( MATERIAL_PROJECTION );
 	pRenderContext->PopMatrix();
 
@@ -252,4 +256,145 @@ void CRenderManager::RenderWorld()
 
 	pRenderContext->MatrixMode( MATERIAL_MODEL );
 	pRenderContext->PopMatrix();
+}
+
+
+//-----------------------------------------------------------------------------
+// Draws ESP
+//-----------------------------------------------------------------------------
+void CRenderManager::DrawESP()
+{
+	if ( !cl_esp.GetBool() )
+		return;
+
+	CMatRenderContextPtr pRenderContext( g_pMaterialSystem );
+
+	// Switch to 2D for drawing
+	pRenderContext->MatrixMode( MATERIAL_PROJECTION );
+	pRenderContext->PushMatrix();
+	pRenderContext->LoadIdentity();
+
+	pRenderContext->MatrixMode( MATERIAL_VIEW );
+	pRenderContext->PushMatrix();
+	pRenderContext->LoadIdentity();
+
+	pRenderContext->MatrixMode( MATERIAL_MODEL );
+	pRenderContext->PushMatrix();
+	pRenderContext->LoadIdentity();
+
+	SetupOrthoMatrix( m_nRenderWidth, m_nRenderHeight );
+
+	IMaterial *pMaterial = g_pMaterialSystem->FindMaterial( "vgui/white", TEXTURE_GROUP_VGUI );
+	pRenderContext->Bind( pMaterial );
+
+	// Get entities
+	for ( int i = 0; i < g_pWorldManager->m_Entities.Count(); i++ )
+	{
+		CEntity &ent = g_pWorldManager->m_Entities[i];
+		if ( !ent.m_bEnemy )
+			continue;
+
+		Vector screenPos;
+		if ( WorldToScreen( ent.m_vecOrigin, screenPos ) )
+		{
+			int x = screenPos.x;
+			int y = screenPos.y;
+			int boxSize = 20;
+
+			// Draw box
+			if ( cl_esp_box.GetBool() )
+			{
+				IMesh *pMesh = pRenderContext->GetDynamicMesh( true, NULL, NULL, pMaterial );
+				CMeshBuilder meshBuilder;
+				meshBuilder.Begin( pMesh, MATERIAL_QUADS, 1 );
+
+				meshBuilder.Position3f( x - boxSize, y - boxSize, 0 );
+				meshBuilder.Color4ub( 255, 0, 0, 255 );
+				meshBuilder.TexCoord2f( 0, 0, 0 );
+				meshBuilder.AdvanceVertex();
+
+				meshBuilder.Position3f( x + boxSize, y - boxSize, 0 );
+				meshBuilder.Color4ub( 255, 0, 0, 255 );
+				meshBuilder.TexCoord2f( 0, 1, 0 );
+				meshBuilder.AdvanceVertex();
+
+				meshBuilder.Position3f( x + boxSize, y + boxSize, 0 );
+				meshBuilder.Color4ub( 255, 0, 0, 255 );
+				meshBuilder.TexCoord2f( 0, 1, 1 );
+				meshBuilder.AdvanceVertex();
+
+				meshBuilder.Position3f( x - boxSize, y + boxSize, 0 );
+				meshBuilder.Color4ub( 255, 0, 0, 255 );
+				meshBuilder.TexCoord2f( 0, 0, 1 );
+				meshBuilder.AdvanceVertex();
+
+				meshBuilder.End();
+				pMesh->Draw();
+			}
+
+			// Draw line from center to entity
+			if ( cl_esp_line.GetBool() )
+			{
+				IMesh *pMesh = pRenderContext->GetDynamicMesh( true, NULL, NULL, pMaterial );
+				CMeshBuilder meshBuilder;
+				meshBuilder.Begin( pMesh, MATERIAL_LINES, 1 );
+
+				meshBuilder.Position3f( m_nRenderWidth / 2, m_nRenderHeight / 2, 0 );
+				meshBuilder.Color4ub( 0, 255, 0, 255 );
+				meshBuilder.TexCoord2f( 0, 0, 0 );
+				meshBuilder.AdvanceVertex();
+
+				meshBuilder.Position3f( x, y, 0 );
+				meshBuilder.Color4ub( 0, 255, 0, 255 );
+				meshBuilder.TexCoord2f( 0, 1, 0 );
+				meshBuilder.AdvanceVertex();
+
+				meshBuilder.End();
+				pMesh->Draw();
+			}
+
+			// Draw name - skip for simplicity
+		}
+	}
+
+	pRenderContext->MatrixMode( MATERIAL_PROJECTION );
+	pRenderContext->PopMatrix();
+
+	pRenderContext->MatrixMode( MATERIAL_VIEW );
+	pRenderContext->PopMatrix();
+
+	pRenderContext->MatrixMode( MATERIAL_MODEL );
+	pRenderContext->PopMatrix();
+}
+
+
+//-----------------------------------------------------------------------------
+// World to screen conversion
+//-----------------------------------------------------------------------------
+bool CRenderManager::WorldToScreen( const Vector &worldPos, Vector &screenPos )
+{
+	CCameraProperty *pCamera = g_pWorldManager->GetLocalPlayer()->m_pCameraProperty;
+	Vector vecToPos = worldPos - pCamera->m_Origin;
+	float flDist = vecToPos.Length();
+	if ( flDist < 1.0f )
+		return false;
+
+	Vector forward, right, up;
+	AngleVectors( pCamera->m_Angles, &forward, &right, &up );
+
+	float dot = DotProduct( vecToPos, forward );
+	if ( dot < 0 )
+		return false; // Behind camera
+
+	float flFOV = 90.0f * M_PI / 180.0f;
+	float flTanHalfFOV = tan( flFOV / 2.0f );
+
+	float flScreenX = DotProduct( vecToPos, right ) / ( flDist * flTanHalfFOV );
+	float flScreenY = DotProduct( vecToPos, up ) / ( flDist * flTanHalfFOV );
+
+	screenPos.x = (flScreenX * 0.5f + 0.5f) * m_nRenderWidth;
+	screenPos.y = (0.5f - flScreenY * 0.5f) * m_nRenderHeight;
+	screenPos.z = 0;
+
+	return true;
 }

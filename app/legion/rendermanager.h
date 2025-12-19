@@ -73,6 +73,9 @@ private:
 	// Draws the world
 	void RenderWorld();
 
+	// Draws ESP
+	void DrawESP();
+
 	// Done completely client-side, want total smoothness, so simulate at render interval
 	void UpdateLocalPlayerCamera();
 

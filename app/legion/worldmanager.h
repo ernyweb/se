@@ -34,6 +34,14 @@ public:
 	CCameraProperty *m_pCameraProperty;
 };
 
+class CEntity
+{
+public:
+	Vector m_vecOrigin;
+	char m_szName[32];
+	bool m_bEnemy;
+};
+
 
 //-----------------------------------------------------------------------------
 // World state
@@ -51,6 +59,9 @@ public:
 
 	// Draws the world
 	void DrawWorld();
+
+	// Draws ESP
+	void DrawESP();
 
 	// Gets the local player
 	CPlayerEntity *GetLocalPlayer();
@@ -71,6 +82,7 @@ private:
 	CHeightField *m_pHeightField;
 
 	CPlayerEntity m_PlayerEntity;
+	CUtlVector<CEntity> m_Entities;
 };
 
 
@@ -79,6 +91,10 @@ private:
 //-----------------------------------------------------------------------------
 extern CWorldManager *g_pWorldManager;
 
+extern ConVar cl_esp;
+extern ConVar cl_esp_box;
+extern ConVar cl_esp_line;
+extern ConVar cl_esp_name;
 
 #endif // WORLDMANAGER_H
 

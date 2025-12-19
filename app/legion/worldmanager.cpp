@@ -21,8 +21,12 @@ extern CWorldManager *g_pWorldManager = &s_WorldManager;
 //-----------------------------------------------------------------------------
 // ConVars
 //-----------------------------------------------------------------------------
-static ConVar cam_forwardspeed( "cam_forwardspeed", "100", FCVAR_CHEAT, "Sets the camera forward speed" );
-static ConVar cam_backwardspeed( "cam_backwardspeed", "100", FCVAR_CHEAT, "Sets the camera backward speed" );
+ConVar cam_forwardspeed( "cam_forwardspeed", "100", FCVAR_CHEAT, "Sets the camera forward speed" );
+ConVar cam_backwardspeed( "cam_backwardspeed", "100", FCVAR_CHEAT, "Sets the camera backward speed" );
+ConVar cl_esp( "cl_esp", "0", FCVAR_CHEAT, "Enable ESP" );
+ConVar cl_esp_box( "cl_esp_box", "1", FCVAR_CHEAT, "Draw ESP boxes" );
+ConVar cl_esp_line( "cl_esp_line", "1", FCVAR_CHEAT, "Draw ESP lines" );
+ConVar cl_esp_name( "cl_esp_name", "1", FCVAR_CHEAT, "Draw ESP names" );
 
 
 //-----------------------------------------------------------------------------
@@ -79,11 +83,31 @@ LevelRetVal_t CWorldManager::LevelShutdown( bool bFirstCall )
 void CWorldManager::CreateEntities()
 {
 	m_PlayerEntity.m_pCameraProperty = g_pRenderManager->CreateCameraProperty();
+
+	// Create some test entities for ESP
+	CEntity ent1;
+	ent1.m_vecOrigin = Vector(256, 256, 50);
+	Q_strncpy(ent1.m_szName, "Enemy1", sizeof(ent1.m_szName));
+	ent1.m_bEnemy = true;
+	m_Entities.AddToTail(ent1);
+
+	CEntity ent2;
+	ent2.m_vecOrigin = Vector(512, 512, 50);
+	Q_strncpy(ent2.m_szName, "Enemy2", sizeof(ent2.m_szName));
+	ent2.m_bEnemy = true;
+	m_Entities.AddToTail(ent2);
+
+	CEntity ent3;
+	ent3.m_vecOrigin = Vector(128, 128, 50);
+	Q_strncpy(ent3.m_szName, "Ally1", sizeof(ent3.m_szName));
+	ent3.m_bEnemy = false;
+	m_Entities.AddToTail(ent3);
 }
 
 void CWorldManager::DestroyEntities()
 {
 	g_pRenderManager->DestroyCameraProperty( m_PlayerEntity.m_pCameraProperty );
+	m_Entities.RemoveAll();
 }
 
 
